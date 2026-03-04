@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hong Kong Mahjong</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+    min-height: 100vh;
+    color: white;
+    overflow-x: hidden;
+}
+
+/* Setup Screen */
+#setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+.setup-title {
+    font-size: 3em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+.setup-subtitle {
+    font-size: 1.2em;
+    color: #aaa;
+    margin-bottom: 40px;
+}
+.setup-box {
+    background: rgba(0,0,0,0.4);
+    border-radius: 15px;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+}
+.setup-section {
+    margin-bottom: 25px;
+}
+.setup-section h3 {
+    margin-bottom: 15px;
+    color: #ffd700;
+}
+.difficulty-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.diff-btn {
+    padding: 15px;
+    border: 2px solid #555;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.diff-btn:hover { background: rgba(255,255,255,0.2); }
+.diff-btn.selected {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.2);
+}
+.diff-btn .label { font-weight: bold; display: block; }
+.diff-btn .desc { font-size: 0.8em; color: #aaa; margin-top: 5px; }
+.money-input {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.money-input input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid #555;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 1.1em;
+}
+.money-input input:focus {
+    outline: none;
+    border-color: #ffd700;
+}
+.start-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 1.3em;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.start-btn:hover { transform: scale(1.02); }
+
+/* Game Screen */
+#game-screen { display: none; padding: 10px; }
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+.player-money {
+    font-size: 1.2em;
+}
+.player-money .amount {
+    color: #ffd700;
+    font-weight: bold;
+}
+.round-info {
+    text-align: center;
+}
+.wind-indicator {
+    font-size: 1.5em;
+}
+.game-controls button {
+    padding: 8px 16px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.new-game-btn { background: #e74c3c; color: white; }
+.rules-btn { background: #3498db; color: white; }
+
+/* Game Table */
+.game-table {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    height: 600px;
+    margin: 0 auto;
+    background: radial-gradient(ellipse at center, #2d5a3d 0%, #1a3d2a 100%);
+    border-radius: 20px;
+    border: 8px solid #8b4513;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+}
+
+/* Tile Styles - Redesigned for visibility */
+.tile {
+    width: 38px;
+    height: 52px;
+    background: linear-gradient(180deg, #fffef5 0%, #f0ead6 50%, #e8e0c8 100%);
+    border: 2px solid #8b7355;
+    border-radius: 5px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8);
+    transition: transform 0.15s, box-shadow 0.15s;
+    user-select: none;
+    position: relative;
+}
+.tile:hover:not(.disabled) {
+    transform: translateY(-8px);
+    box-shadow: 2px 6px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+.tile.selected {
+    transform: translateY(-12px);
+    box-shadow: 0 0 15px #ffd700, 2px 6px 8px rgba(0,0,0,0.5);
+    border-color: #ffd700;
+}
+.tile.disabled { cursor: default; opacity: 0.95; }
+.tile.facedown {
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 50%, #145214 100%);
+    border-color: #0d3d0d;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.tile.facedown::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, #4caf50 0%, #2e7d32 100%);
+    border-radius: 50%;
+    border: 1px solid #1b5e20;
+}
+.tile.small {
+    width: 30px;
+    height: 42px;
+}
+.tile.small .tile-number { font-size: 16px; }
+.tile.small .tile-suit { font-size: 8px; }
+.tile.small.facedown::after { width: 14px; height: 14px; }
+
+.tile.tiny {
+    width: 24px;
+    height: 34px;
+}
+.tile.tiny .tile-number { font-size: 13px; }
+.tile.tiny .tile-suit { font-size: 7px; }
+.tile.tiny.facedown::after { width: 10px; height: 10px; }
+
+/* Tile content styling */
+.tile-number {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1;
+}
+.tile-suit {
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Suit colors */
+.tile.bamboo .tile-number { color: #2e7d32; }
+.tile.bamboo .tile-suit { color: #1b5e20; }
+.tile.character .tile-number { color: #c62828; }
+.tile.character .tile-suit { color: #b71c1c; }
+.tile.dot .tile-number { color: #1565c0; }
+.tile.dot .tile-suit { color: #0d47a1; }
+
+/* Honor tiles */
+.tile.wind .tile-number {
+    color: #37474f;
+    font-size: 14px;
+}
+.tile.wind .tile-suit { color: #546e7a; }
+.tile.dragon .tile-number { font-size: 16px; }
+.tile.dragon.red-dragon .tile-number { color: #d32f2f; }
+.tile.dragon.green-dragon .tile-number { color: #388e3c; }
+.tile.dragon.white-dragon .tile-number {
+    color: #9e9e9e;
+    -webkit-text-stroke: 1px #616161;
+}
+
+/* Player Areas */
+.player-area {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.player-area .name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    padding: 3px 12px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+.player-area .name.current {
+    background: #ffd700;
+    color: #000;
+}
+.player-area .money-display {
+    font-size: 0.8em;
+    color: #ffd700;
+    margin-bottom: 5px;
+}
+
+/* Player positions */
+.player-south {
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.player-east {
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.player-north {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.player-west {
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.hand-tiles {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 560px;
+}
+.melds-area {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+.meld {
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 5px;
+}
+
+/* Vertical hands for East/West */
+.player-east .hand-tiles,
+.player-west .hand-tiles {
+    flex-direction: column;
+    max-width: none;
+}
+.player-east .melds-area,
+.player-west .melds-area {
+    flex-direction: column;
+}
+
+/* Center area - FIXED: constrain discard pile height */
+.center-area {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-height: 280px;
+}
+.discard-pile {
+    display: grid;
+    grid-template-columns: repeat(8, 26px);
+    gap: 2px;
+    padding: 10px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+    min-height: 80px;
+    max-height: 180px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+}
+/* Custom scrollbar for discard pile */
+.discard-pile::-webkit-scrollbar {
+    width: 6px;
+}
+.discard-pile::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+.discard-pile::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px;
+}
+.discard-pile::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
+}
+.tiles-remaining {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+/* Action Panel */
+.action-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(0,0,0,0.85);
+    border-radius: 15px;
+    z-index: 100;
+    border: 2px solid rgba(255,255,255,0.1);
+}
+.action-btn {
+    padding: 12px 24px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.action-btn.discard { background: #e74c3c; color: white; }
+.action-btn.pong { background: #e67e22; color: white; }
+.action-btn.kong { background: #9b59b6; color: white; }
+.action-btn.chow { background: #3498db; color: white; }
+.action-btn.win { background: #f1c40f; color: #000; }
+.action-btn.skip { background: #7f8c8d; color: white; }
+
+/* Modals */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+    background: #2c3e50;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal h2 {
+    color: #ffd700;
+    margin-bottom: 20px;
+    text-align: center;
+}
+.modal-close {
+    float: right;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+/* Win Screen */
+.win-modal {
+    text-align: center;
+}
+.win-modal .winner-name {
+    font-size: 2em;
+    color: #ffd700;
+    margin-bottom: 20px;
+}
+.win-modal .hand-display {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+.scoring-breakdown {
+    text-align: left;
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+.scoring-breakdown .item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.scoring-breakdown .total {
+    font-size: 1.3em;
+    color: #ffd700;
+    border-top: 2px solid #ffd700;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+.money-changes {
+    margin: 20px 0;
+}
+.money-change {
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+.money-change.positive { background: rgba(46,204,113,0.3); }
+.money-change.negative { background: rgba(231,76,60,0.3); }
+.continue-btn {
+    padding: 15px 40px;
+    font-size: 1.2em;
+    background: #ffd700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Rules Modal */
+.rules-content {
+    line-height: 1.6;
+}
+.rules-content h3 {
+    color: #ffd700;
+    margin: 15px 0 10px;
+}
+.rules-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+.rules-content td {
+    padding: 8px;
+    border: 1px solid #555;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 30px;
+    background: rgba(0,0,0,0.9);
+    border-radius: 10px;
+    z-index: 300;
+    display: none;
+}
+.toast.show { display: block; animation: fadeInOut 2s; }
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    20%, 80% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+    <div class="setup-title">🀄 Hong Kong Mahjong</div>
+    <div class="setup-subtitle">Play against 3 AI opponents</div>
+
+    <div class="setup-box">
+        <div class="setup-section">
+            <h3>🤖 Bot Difficulty</h3>
+            <div class="difficulty-grid">
+                <button class="diff-btn" data-diff="easy">
+                    <span class="label">Easy</span>
+                    <span class="desc">Random play</span>
+                </button>
+                <button class="diff-btn selected" data-diff="medium">
+                    <span class="label">Medium</span>
+                    <span class="desc">Basic strategy</span>
+                </button>
+                <button class="diff-btn" data-diff="hard">
+                    <span class="label">Hard</span>
+                    <span class="desc">Smart AI</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="setup-section">
+            <h3>💰 Starting Money</h3>
+            <div class="money-input">
+                <span>$</span>
+                <input type="number" id="starting-money" value="10000" min="1000" step="1000">
+            </div>
+        </div>
+
+        <div class="setup-section">
+            <h3>🎯 Base Bet (per Faan)</h3>
+            <div class="money-input">
+                <span>$</span>
+                <input type="number" id="base-bet" value="100" min="10" step="10">
+            </div>
+        </div>
+
+        <button class="start-btn" onclick="startGame()">Start Game 開始</button>
+    </div>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen">
+    <div class="game-header">
+        <div class="player-money">
+            Your Balance: <span class="amount" id="player-balance">$10,000</span>
+        </div>
+        <div class="round-info">
+            <div class="wind-indicator" id="round-wind">東 East Round</div>
+            <div id="hand-number">Hand 1</div>
+        </div>
+        <div class="game-controls">
+            <button class="rules-btn" onclick="showRules()">Rules 規則</button>
+            <button class="new-game-btn" onclick="confirmNewGame()">New Game</button>
+        </div>
+    </div>
+
+    <div class="game-table">
+        <!-- North Player (Bot) -->
+        <div class="player-area player-north" id="player-north">
+            <div class="name" id="name-north">North 北</div>
+            <div class="money-display" id="money-north">$10,000</div>
+            <div class="hand-tiles" id="hand-north"></div>
+            <div class="melds-area" id="melds-north"></div>
+        </div>
+
+        <!-- East Player (Bot) -->
+        <div class="player-area player-east" id="player-east">
+            <div class="name" id="name-east">East 東</div>
+            <div class="money-display" id="money-east">$10,000</div>
+            <div class="hand-tiles" id="hand-east"></div>
+            <div class="melds-area" id="melds-east"></div>
+        </div>
+
+        <!-- West Player (Bot) -->
+        <div class="player-area player-west" id="player-west">
+            <div class="name" id="name-west">West 西</div>
+            <div class="money-display" id="money-west">$10,000</div>
+            <div class="hand-tiles" id="hand-west"></div>
+            <div class="melds-area" id="melds-west"></div>
+        </div>
+
+        <!-- South Player (Human) -->
+        <div class="player-area player-south" id="player-south">
+            <div class="melds-area" id="melds-south"></div>
+            <div class="hand-tiles" id="hand-south"></div>
+            <div class="money-display" id="money-south">You</div>
+            <div class="name" id="name-south">South 南 (You)</div>
+        </div>
+
+        <!-- Center -->
+        <div class="center-area">
+            <div class="discard-pile" id="discard-pile"></div>
+            <div class="tiles-remaining">Tiles: <span id="tiles-left">83</span></div>
+        </div>
+    </div>
+
+    <!-- Action Panel -->
+    <div class="action-panel" id="action-panel">
+        <button class="action-btn discard" id="btn-discard" disabled onclick="discardSelected()">Discard 打</button>
+        <button class="action-btn chow" id="btn-chow" disabled onclick="doChow()">Chow 上</button>
+        <button class="action-btn pong" id="btn-pong" disabled onclick="doPong()">Pong 碰</button>
+        <button class="action-btn kong" id="btn-kong" disabled onclick="doKong()">Kong 槓</button>
+        <button class="action-btn win" id="btn-win" disabled onclick="declareWin()">Win! 食糊</button>
+        <button class="action-btn skip" id="btn-skip" disabled onclick="skipAction()">Skip 過</button>
+    </div>
+</div>
+
+<!-- Win Modal -->
+<div class="modal-overlay" id="win-modal">
+    <div class="modal win-modal">
+        <h2>🎉 Round Complete!</h2>
+        <div class="winner-name" id="winner-name"></div>
+        <div class="hand-display" id="winning-hand"></div>
+        <div class="scoring-breakdown" id="scoring-breakdown"></div>
+        <div class="money-changes" id="money-changes"></div>
+        <button class="continue-btn" onclick="nextRound()">Continue 繼續</button>
+    </div>
+</div>
+
+<!-- Draw Modal -->
+<div class="modal-overlay" id="draw-modal">
+    <div class="modal">
+        <h2>🤝 Draw Game 流局</h2>
+        <p style="text-align:center;margin:20px 0;">No tiles remaining. No winner this round.</p>
+        <button class="continue-btn" onclick="nextRound()" style="display:block;margin:0 auto;">Continue 繼續</button>
+    </div>
+</div>
+
+<!-- Rules Modal -->
+<div class="modal-overlay" id="rules-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeRules()">×</button>
+        <h2>📖 Hong Kong Mahjong Rules</h2>
+        <div class="rules-content">
+            <h3>Objective</h3>
+            <p>Complete a winning hand of 4 sets + 1 pair (14 tiles total).</p>
+
+            <h3>Sets</h3>
+            <p><b>Chow (上)</b>: 3 consecutive tiles of same suit (e.g., 1-2-3 Bamboo)<br>
+            <b>Pong (碰)</b>: 3 identical tiles<br>
+            <b>Kong (槓)</b>: 4 identical tiles</p>
+
+            <h3>Actions</h3>
+            <p>• Draw a tile on your turn<br>
+            • Discard one tile to end your turn<br>
+            • Call Pong/Kong on any discard<br>
+            • Call Chow only on left player's discard</p>
+
+            <h3>Tile Suits</h3>
+            <p><span style="color:#2e7d32;font-weight:bold;">Green = Bamboo (條)</span><br>
+            <span style="color:#c62828;font-weight:bold;">Red = Character (萬)</span><br>
+            <span style="color:#1565c0;font-weight:bold;">Blue = Dot (筒)</span></p>
+
+            <h3>Scoring (番 Faan)</h3>
+            <table>
+                <tr><td>All Chows 平糊</td><td>1 番</td></tr>
+                <tr><td>All Pungs 對對糊</td><td>3 番</td></tr>
+                <tr><td>Half Flush 混一色</td><td>3 番</td></tr>
+                <tr><td>Full Flush 清一色</td><td>7 番</td></tr>
+                <tr><td>All Honors 字一色</td><td>10 番</td></tr>
+                <tr><td>Self-Draw 自摸</td><td>+1 番</td></tr>
+                <tr><td>Dragon Pung 番子</td><td>1 番 each</td></tr>
+                <tr><td>Seat/Round Wind</td><td>1 番 each</td></tr>
+            </table>
+
+            <h3>Money</h3>
+            <p>Base payment = Base Bet × 2^(Faan count)<br>
+            Self-draw: All 3 losers pay<br>
+            Discard win: Only discarder pays (×3)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ TILE DEFINITIONS ============
+const SUITS = ['bamboo', 'character', 'dot'];
+const SUIT_LABELS = {
+    bamboo: 'BAM',
+    character: 'WAN',
+    dot: 'DOT'
+};
+const WINDS = ['east', 'south', 'west', 'north'];
+const WIND_LABELS = {
+    east: '東',
+    south: '南',
+    west: '西',
+    north: '北'
+};
+const DRAGONS = ['red', 'green', 'white'];
+const DRAGON_LABELS = {
+    red: '中',
+    green: '發',
+    white: '白'
+};
+
+// ============ GAME STATE ============
+let gameState = {
+    difficulty: 'medium',
+    baseBet: 100,
+    roundWind: 0,
+    handNumber: 1,
+    dealer: 0,
+    currentPlayer: 0,
+    wall: [],
+    discardPile: [],
+    lastDiscard: null,
+    lastDiscarder: null,
+    players: [],
+    selectedTile: null,
+    waitingForAction: false,
+    canChow: false,
+    canPong: false,
+    canKong: false,
+    canWin: false,
+    gamePhase: 'playing'
+};
+
+// ============ TILE UTILITIES ============
+function createTile(type, suit, value) {
+    return { type, suit, value, id: Math.random().toString(36).substr(2,9) };
+}
+
+function getTileDisplay(tile) {
+    if (tile.type === 'suit') {
+        return {
+            number: tile.value,
+            suit: SUIT_LABELS[tile.suit],
+            suitClass: tile.suit
+        };
+    } else if (tile.type === 'wind') {
+        return {
+            number: WIND_LABELS[tile.value],
+            suit: 'WIND',
+            suitClass: 'wind'
+        };
+    } else if (tile.type === 'dragon') {
+        return {
+            number: DRAGON_LABELS[tile.value],
+            suit: '',
+            suitClass: 'dragon ' + tile.value + '-dragon'
+        };
+    }
+    return { number: '?', suit: '', suitClass: '' };
+}
+
+function tileKey(tile) {
+    return `${tile.type}-${tile.suit || ''}-${tile.value}`;
+}
+
+function tilesEqual(a, b) {
+    return a.type === b.type && a.suit === b.suit && a.value === b.value;
+}
+
+function compareTiles(a, b) {
+    const typeOrder = { suit: 0, wind: 1, dragon: 2 };
+    const suitOrder = { bamboo: 0, character: 1, dot: 2 };
+
+    if (a.type !== b.type) return typeOrder[a.type] - typeOrder[b.type];
+    if (a.type === 'suit') {
+        if (a.suit !== b.suit) return suitOrder[a.suit] - suitOrder[b.suit];
+        return a.value - b.value;
+    }
+    if (a.type === 'wind') {
+        return WINDS.indexOf(a.value) - WINDS.indexOf(b.value);
+    }
+    return DRAGONS.indexOf(a.value) - DRAGONS.indexOf(b.value);
+}
+
+function sortHand(hand) {
+    return [...hand].sort(compareTiles);
+}
+
+// ============ WALL & DEALING ============
+function createWall() {
+    const wall = [];
+    for (const suit of SUITS) {
+        for (let val = 1; val <= 9; val++) {
+            for (let i = 0; i < 4; i++) {
+                wall.push(createTile('suit', suit, val));
+            }
+        }
+    }
+    for (const wind of WINDS) {
+        for (let i = 0; i < 4; i++) {
+            wall.push(createTile('wind', null, wind));
+        }
+    }
+    for (const dragon of DRAGONS) {
+        for (let i = 0; i < 4; i++) {
+            wall.push(createTile('dragon', null, dragon));
+        }
+    }
+    for (let i = wall.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wall[i], wall[j]] = [wall[j], wall[i]];
+    }
+    return wall;
+}
+
+function dealTiles() {
+    gameState.wall = createWall();
+    gameState.discardPile = [];
+    gameState.lastDiscard = null;
+    gameState.lastDiscarder = null;
+
+    for (let p = 0; p < 4; p++) {
+        gameState.players[p].hand = [];
+        gameState.players[p].melds = [];
+        for (let i = 0; i < 13; i++) {
+            gameState.players[p].hand.push(gameState.wall.pop());
+        }
+        gameState.players[p].hand = sortHand(gameState.players[p].hand);
+    }
+    gameState.players[gameState.dealer].hand.push(gameState.wall.pop());
+    gameState.currentPlayer = gameState.dealer;
+}
+
+// ============ GAME INITIALIZATION ============
+function startGame() {
+    const startingMoney = parseInt(document.getElementById('starting-money').value) || 10000;
+    gameState.baseBet = parseInt(document.getElementById('base-bet').value) || 100;
+    gameState.difficulty = document.querySelector('.diff-btn.selected').dataset.diff;
+
+    gameState.roundWind = 0;
+    gameState.handNumber = 1;
+    gameState.dealer = 0;
+
+    gameState.players = [
+        { hand: [], melds: [], money: startingMoney, isHuman: true, seatWind: 'south', position: 'south' },
+        { hand: [], melds: [], money: startingMoney, isHuman: false, seatWind: 'east', position: 'east' },
+        { hand: [], melds: [], money: startingMoney, isHuman: false, seatWind: 'north', position: 'north' },
+        { hand: [], melds: [], money: startingMoney, isHuman: false, seatWind: 'west', position: 'west' }
+    ];
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+
+    startRound();
+}
+
+function startRound() {
+    gameState.gamePhase = 'playing';
+    dealTiles();
+    updateAllDisplays();
+
+    if (gameState.players[gameState.currentPlayer].isHuman) {
+        enableDiscardMode();
+    } else {
+        setTimeout(botTurn, 800);
+    }
+}
+
+// ============ DISPLAY FUNCTIONS ============
+function updateAllDisplays() {
+    updateRoundInfo();
+    updateMoneyDisplays();
+    updateAllHands();
+    updateDiscardPile();
+    updateTilesRemaining();
+}
+
+function updateRoundInfo() {
+    const winds = ['東 East', '南 South', '西 West', '北 North'];
+    document.getElementById('round-wind').textContent = winds[gameState.roundWind] + ' Round';
+    document.getElementById('hand-number').textContent = 'Hand ' + gameState.handNumber;
+}
+
+function updateMoneyDisplays() {
+    document.getElementById('player-balance').textContent = '$' + gameState.players[0].money.toLocaleString();
+    document.getElementById('money-east').textContent = '$' + gameState.players[1].money.toLocaleString();
+    document.getElementById('money-north').textContent = '$' + gameState.players[2].money.toLocaleString();
+    document.getElementById('money-west').textContent = '$' + gameState.players[3].money.toLocaleString();
+}
+
+function updateAllHands() {
+    const positions = ['south', 'east', 'north', 'west'];
+    for (let i = 0; i < 4; i++) {
+        updateHand(i, positions[i]);
+        updateMelds(i, positions[i]);
+        const nameEl = document.getElementById('name-' + positions[i]);
+        nameEl.classList.toggle('current', i === gameState.currentPlayer);
+    }
+}
+
+function createTileElement(tile, sizeClass = '', isClickable = false, index = null) {
+    const tileEl = document.createElement('div');
+    const display = getTileDisplay(tile);
+    tileEl.className = `tile ${display.suitClass} ${sizeClass}`.trim();
+
+    const numberEl = document.createElement('div');
+    numberEl.className = 'tile-number';
+    numberEl.textContent = display.number;
+    tileEl.appendChild(numberEl);
+
+    if (display.suit) {
+        const suitEl = document.createElement('div');
+        suitEl.className = 'tile-suit';
+        suitEl.textContent = display.suit;
+        tileEl.appendChild(suitEl);
+    }
+
+    if (isClickable && index !== null) {
+        tileEl.dataset.index = index;
+        tileEl.onclick = () => selectTile(index);
+    }
+
+    return tileEl;
+}
+
+function updateHand(playerIdx, position) {
+    const container = document.getElementById('hand-' + position);
+    container.innerHTML = '';
+    const player = gameState.players[playerIdx];
+    const isVertical = position === 'east' || position === 'west';
+    const sizeClass = isVertical ? 'small' : '';
+
+    player.hand.forEach((tile, idx) => {
+        if (player.isHuman) {
+            const tileEl = createTileElement(tile, sizeClass, true, idx);
+            if (gameState.selectedTile === idx) {
+                tileEl.classList.add('selected');
+            }
+            container.appendChild(tileEl);
+        } else {
+            const tileEl = document.createElement('div');
+            tileEl.className = `tile facedown ${sizeClass}`.trim();
+            container.appendChild(tileEl);
+        }
+    });
+}
+
+function updateMelds(playerIdx, position) {
+    const container = document.getElementById('melds-' + position);
+    container.innerHTML = '';
+    const player = gameState.players[playerIdx];
+
+    player.melds.forEach(meld => {
+        const meldEl = document.createElement('div');
+        meldEl.className = 'meld';
+        meld.tiles.forEach(tile => {
+            const tileEl = createTileElement(tile, 'tiny');
+            tileEl.classList.add('disabled');
+            meldEl.appendChild(tileEl);
+        });
+        container.appendChild(meldEl);
+    });
+}
+
+function updateDiscardPile() {
+    const container = document.getElementById('discard-pile');
+    container.innerHTML = '';
+    gameState.discardPile.forEach(tile => {
+        const tileEl = createTileElement(tile, 'tiny');
+        tileEl.classList.add('disabled');
+        container.appendChild(tileEl);
+    });
+    // Auto-scroll to bottom to show latest discards
+    container.scrollTop = container.scrollHeight;
+}
+
+function updateTilesRemaining() {
+    document.getElementById('tiles-left').textContent = gameState.wall.length;
+}
+
+// ============ PLAYER ACTIONS ============
+function selectTile(index) {
+    if (gameState.gamePhase !== 'playing') return;
+    if (gameState.currentPlayer !== 0) return;
+
+    if (gameState.selectedTile === index) {
+        gameState.selectedTile = null;
+    } else {
+        gameState.selectedTile = index;
+    }
+    updateAllHands();
+    document.getElementById('btn-discard').disabled = gameState.selectedTile === null;
+}
+
+function enableDiscardMode() {
+    gameState.selectedTile = null;
+    document.getElementById('btn-discard').disabled = true;
+    document.getElementById('btn-chow').disabled = true;
+    document.getElementById('btn-pong').disabled = true;
+    document.getElementById('btn-kong').disabled = true;
+    document.getElementById('btn-win').disabled = true;
+    document.getElementById('btn-skip').disabled = true;
+}
+
+function discardSelected() {
+    if (gameState.selectedTile === null) return;
+
+    const player = gameState.players[0];
+    const tile = player.hand.splice(gameState.selectedTile, 1)[0];
+    player.hand = sortHand(player.hand);
+    gameState.discardPile.push(tile);
+    gameState.lastDiscard = tile;
+    gameState.lastDiscarder = 0;
+    gameState.selectedTile = null;
+
+    updateAllDisplays();
+    disableAllButtons();
+
+    setTimeout(() => checkBotReactions(), 300);
+}
+
+function checkBotReactions() {
+    for (let i = 1; i < 4; i++) {
+        const player = gameState.players[i];
+        if (canPlayerWin(player, gameState.lastDiscard)) {
+            handleWin(i, false);
+            return;
+        }
+    }
+
+    for (let i = 1; i < 4; i++) {
+        if (shouldBotPong(i)) {
+            botDoPong(i);
+            return;
+        }
+        if (shouldBotKong(i, gameState.lastDiscard)) {
+            botDoKong(i, gameState.lastDiscard);
+            return;
+        }
+    }
+
+    nextTurn();
+}
+
+function nextTurn() {
+    gameState.currentPlayer = (gameState.currentPlayer + 1) % 4;
+
+    if (gameState.wall.length === 0) {
+        endRoundDraw();
+        return;
+    }
+
+    const tile = gameState.wall.pop();
+    gameState.players[gameState.currentPlayer].hand.push(tile);
+
+    updateAllDisplays();
+
+    if (gameState.players[gameState.currentPlayer].isHuman) {
+        if (canPlayerWin(gameState.players[0], null)) {
+            document.getElementById('btn-win').disabled = false;
+        }
+        checkSelfKong();
+        enableDiscardMode();
+    } else {
+        setTimeout(botTurn, 600);
+    }
+}
+
+function checkSelfKong() {
+    const player = gameState.players[0];
+    const drawnTile = player.hand[player.hand.length - 1];
+    const count = player.hand.filter(t => tilesEqual(t, drawnTile)).length;
+    if (count >= 4) {
+        document.getElementById('btn-kong').disabled = false;
+    }
+}
+
+// ============ MELD ACTIONS ============
+function doPong() {
+    const player = gameState.players[0];
+    const tile = gameState.lastDiscard;
+
+    let removed = 0;
+    player.hand = player.hand.filter(t => {
+        if (removed < 2 && tilesEqual(t, tile)) {
+            removed++;
+            return false;
+        }
+        return true;
+    });
+
+    player.melds.push({
+        type: 'pong',
+        tiles: [tile, {...tile}, {...tile}]
+    });
+
+    gameState.discardPile.pop();
+    gameState.lastDiscard = null;
+
+    gameState.currentPlayer = 0;
+    updateAllDisplays();
+    disableAllButtons();
+    enableDiscardMode();
+}
+
+function doKong() {
+    const player = gameState.players[0];
+
+    if (gameState.lastDiscard && countInHand(player.hand, gameState.lastDiscard) >= 3) {
+        const tile = gameState.lastDiscard;
+        player.hand = player.hand.filter(t => !tilesEqual(t, tile));
+        player.melds.push({
+            type: 'kong',
+            tiles: [tile, {...tile}, {...tile}, {...tile}]
+        });
+        gameState.discardPile.pop();
+        gameState.lastDiscard = null;
+        gameState.currentPlayer = 0;
+    } else {
+        const drawnTile = player.hand[player.hand.length - 1];
+        player.hand = player.hand.filter(t => !tilesEqual(t, drawnTile));
+        player.melds.push({
+            type: 'kong',
+            tiles: [drawnTile, {...drawnTile}, {...drawnTile}, {...drawnTile}]
+        });
+    }
+
+    if (gameState.wall.length > 0) {
+        player.hand.push(gameState.wall.pop());
+        player.hand = sortHand(player.hand);
+    }
+
+    updateAllDisplays();
+    disableAllButtons();
+    enableDiscardMode();
+}
+
+function doChow() {
+    const player = gameState.players[0];
+    const tile = gameState.lastDiscard;
+
+    if (tile.type !== 'suit') return;
+
+    const val = tile.value;
+    const suit = tile.suit;
+    const hand = player.hand;
+
+    const patterns = [
+        [val-2, val-1, val],
+        [val-1, val, val+1],
+        [val, val+1, val+2]
+    ];
+
+    for (const pattern of patterns) {
+        if (pattern[0] < 1 || pattern[2] > 9) continue;
+
+        const needed = pattern.filter(v => v !== val);
+        let canMake = true;
+        const toRemove = [];
+
+        for (const v of needed) {
+            const idx = hand.findIndex(t => t.type === 'suit' && t.suit === suit && t.value === v && !toRemove.includes(t.id));
+            if (idx === -1) {
+                canMake = false;
+                break;
+            }
+            toRemove.push(hand[idx].id);
+        }
+
+        if (canMake) {
+            player.hand = hand.filter(t => !toRemove.includes(t.id));
+            player.melds.push({
+                type: 'chow',
+                tiles: pattern.map(v => createTile('suit', suit, v))
+            });
+            gameState.discardPile.pop();
+            gameState.lastDiscard = null;
+            gameState.currentPlayer = 0;
+
+            updateAllDisplays();
+            disableAllButtons();
+            enableDiscardMode();
+            return;
+        }
+    }
+}
+
+function declareWin() {
+    handleWin(0, !gameState.lastDiscard || gameState.lastDiscarder === 0);
+}
+
+function skipAction() {
+    disableAllButtons();
+    nextTurn();
+}
+
+// ============ BOT LOGIC ============
+function botTurn() {
+    if (gameState.gamePhase !== 'playing') return;
+
+    const player = gameState.players[gameState.currentPlayer];
+
+    if (canPlayerWin(player, null)) {
+        handleWin(gameState.currentPlayer, true);
+        return;
+    }
+
+    const drawnTile = player.hand[player.hand.length - 1];
+    if (countInHand(player.hand, drawnTile) >= 4) {
+        player.hand = player.hand.filter(t => !tilesEqual(t, drawnTile));
+        player.melds.push({
+            type: 'kong',
+            tiles: [drawnTile, {...drawnTile}, {...drawnTile}, {...drawnTile}]
+        });
+        if (gameState.wall.length > 0) {
+            player.hand.push(gameState.wall.pop());
+        }
+        updateAllDisplays();
+        setTimeout(botTurn, 600);
+        return;
+    }
+
+    const discardIdx = chooseBotDiscard(gameState.currentPlayer);
+    const tile = player.hand.splice(discardIdx, 1)[0];
+    player.hand = sortHand(player.hand);
+    gameState.discardPile.push(tile);
+    gameState.lastDiscard = tile;
+    gameState.lastDiscarder = gameState.currentPlayer;
+
+    updateAllDisplays();
+
+    setTimeout(() => checkHumanReactions(), 300);
+}
+
+function chooseBotDiscard(playerIdx) {
+    const player = gameState.players[playerIdx];
+    const hand = player.hand;
+
+    if (gameState.difficulty === 'easy') {
+        return Math.floor(Math.random() * hand.length);
+    }
+
+    const scores = hand.map((tile, idx) => {
+        let score = 0;
+
+        const count = countInHand(hand, tile);
+        if (count >= 2) score += 10;
+        if (count >= 3) score += 20;
+
+        if (tile.type === 'suit') {
+            const suit = tile.suit;
+            const val = tile.value;
+            if (hand.some(t => t.type === 'suit' && t.suit === suit && Math.abs(t.value - val) === 1)) {
+                score += 8;
+            }
+            if (hand.some(t => t.type === 'suit' && t.suit === suit && Math.abs(t.value - val) === 2)) {
+                score += 3;
+            }
+            if (val === 1 || val === 9) score -= 2;
+        }
+
+        if (tile.type === 'dragon') score += 5;
+        if (tile.type === 'wind') {
+            if (tile.value === WINDS[gameState.roundWind]) score += 5;
+            if (tile.value === player.seatWind) score += 5;
+        }
+
+        if (gameState.difficulty === 'hard') {
+            const inDiscard = gameState.discardPile.filter(t => tilesEqual(t, tile)).length;
+            if (inDiscard >= 2) score -= 5;
+        }
+
+        return { idx, score };
+    });
+
+    scores.sort((a, b) => a.score - b.score);
+
+    if (gameState.difficulty === 'medium' && Math.random() < 0.3) {
+        return scores[Math.floor(Math.random() * Math.min(3, scores.length))].idx;
+    }
+
+    return scores[0].idx;
+}
+
+function shouldBotPong(playerIdx) {
+    const player = gameState.players[playerIdx];
+    const tile = gameState.lastDiscard;
+
+    if (countInHand(player.hand, tile) < 2) return false;
+
+    if (gameState.difficulty === 'easy') return Math.random() < 0.3;
+
+    if (tile.type === 'dragon') return true;
+    if (tile.type === 'wind') {
+        if (tile.value === WINDS[gameState.roundWind]) return true;
+        if (tile.value === player.seatWind) return true;
+    }
+
+    if (gameState.difficulty === 'hard') {
+        return Math.random() < 0.4;
+    }
+
+    return Math.random() < 0.5;
+}
+
+function shouldBotKong(playerIdx, tile) {
+    const player = gameState.players[playerIdx];
+    return countInHand(player.hand, tile) >= 3;
+}
+
+function botDoPong(playerIdx) {
+    const player = gameState.players[playerIdx];
+    const tile = gameState.lastDiscard;
+
+    let removed = 0;
+    player.hand = player.hand.filter(t => {
+        if (removed < 2 && tilesEqual(t, tile)) {
+            removed++;
+            return false;
+        }
+        return true;
+    });
+
+    player.melds.push({
+        type: 'pong',
+        tiles: [tile, {...tile}, {...tile}]
+    });
+
+    gameState.discardPile.pop();
+    gameState.lastDiscard = null;
+    gameState.currentPlayer = playerIdx;
+
+    showToast('Bot Pong! 碰');
+    updateAllDisplays();
+    setTimeout(botTurn, 800);
+}
+
+function botDoKong(playerIdx, tile) {
+    const player = gameState.players[playerIdx];
+
+    player.hand = player.hand.filter(t => !tilesEqual(t, tile));
+    player.melds.push({
+        type: 'kong',
+        tiles: [tile, {...tile}, {...tile}, {...tile}]
+    });
+
+    gameState.discardPile.pop();
+    gameState.lastDiscard = null;
+    gameState.currentPlayer = playerIdx;
+
+    if (gameState.wall.length > 0) {
+        player.hand.push(gameState.wall.pop());
+    }
+
+    showToast('Bot Kong! 槓');
+    updateAllDisplays();
+    setTimeout(botTurn, 800);
+}
+
+function checkHumanReactions() {
+    const player = gameState.players[0];
+    const tile = gameState.lastDiscard;
+    const leftPlayer = (gameState.lastDiscarder === 3);
+
+    gameState.canWin = canPlayerWin(player, tile);
+    gameState.canPong = countInHand(player.hand, tile) >= 2;
+    gameState.canKong = countInHand(player.hand, tile) >= 3;
+    gameState.canChow = leftPlayer && canChow(player.hand, tile);
+
+    if (gameState.canWin || gameState.canPong || gameState.canKong || gameState.canChow) {
+        document.getElementById('btn-win').disabled = !gameState.canWin;
+        document.getElementById('btn-pong').disabled = !gameState.canPong;
+        document.getElementById('btn-kong').disabled = !gameState.canKong;
+        document.getElementById('btn-chow').disabled = !gameState.canChow;
+        document.getElementById('btn-skip').disabled = false;
+    } else {
+        nextTurn();
+    }
+}
+
+// ============ WIN CHECKING ============
+function countInHand(hand, tile) {
+    return hand.filter(t => tilesEqual(t, tile)).length;
+}
+
+function canChow(hand, tile) {
+    if (tile.type !== 'suit') return false;
+
+    const val = tile.value;
+    const suit = tile.suit;
+
+    const patterns = [
+        [val-2, val-1],
+        [val-1, val+1],
+        [val+1, val+2]
+    ];
+
+    for (const [a, b] of patterns) {
+        if (a < 1 || b > 9) continue;
+        if (hand.some(t => t.type === 'suit' && t.suit === suit && t.value === a) &&
+            hand.some(t => t.type === 'suit' && t.suit === suit && t.value === b)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function canPlayerWin(player, drawnOrDiscardTile) {
+    let allTiles = [...player.hand];
+    if (drawnOrDiscardTile) {
+        allTiles.push(drawnOrDiscardTile);
+    }
+
+    const meldTiles = player.melds.reduce((sum, m) => sum + m.tiles.length, 0);
+    if (allTiles.length + meldTiles !== 14) return false;
+
+    return isWinningHand(allTiles);
+}
+
+function isWinningHand(tiles) {
+    return checkWinRecursive(sortHand(tiles), 0, false);
+}
+
+function checkWinRecursive(tiles, sets, hasPair) {
+    if (tiles.length === 0) return sets >= 4 && hasPair;
+    if (tiles.length === 2 && !hasPair) {
+        return tilesEqual(tiles[0], tiles[1]);
+    }
+
+    if (!hasPair && tiles.length >= 2 && tilesEqual(tiles[0], tiles[1])) {
+        const remaining = tiles.slice(2);
+        if (checkWinRecursive(remaining, sets, true)) return true;
+    }
+
+    if (tiles.length >= 3 && tilesEqual(tiles[0], tiles[1]) && tilesEqual(tiles[1], tiles[2])) {
+        const remaining = tiles.slice(3);
+        if (checkWinRecursive(remaining, sets + 1, hasPair)) return true;
+    }
+
+    if (tiles[0].type === 'suit') {
+        const suit = tiles[0].suit;
+        const val = tiles[0].value;
+
+        const idx1 = tiles.findIndex((t, i) => i > 0 && t.type === 'suit' && t.suit === suit && t.value === val + 1);
+        const idx2 = tiles.findIndex((t, i) => i > 0 && t.type === 'suit' && t.suit === suit && t.value === val + 2);
+
+        if (idx1 !== -1 && idx2 !== -1) {
+            const remaining = tiles.filter((t, i) => i !== 0 && i !== idx1 && i !== idx2);
+            if (checkWinRecursive(remaining, sets + 1, hasPair)) return true;
+        }
+    }
+
+    return false;
+}
+
+// ============ SCORING ============
+function calculateScore(player, isSelfDraw) {
+    const scoring = [];
+    let faan = 0;
+
+    const allTiles = [...player.hand];
+    const melds = player.melds;
+
+    if (isSelfDraw) {
+        faan += 1;
+        scoring.push({ name: 'Self-Draw 自摸', value: 1 });
+    }
+
+    if (isAllPungs(player)) {
+        faan += 3;
+        scoring.push({ name: 'All Pungs 對對糊', value: 3 });
+    }
+
+    for (const meld of melds) {
+        if ((meld.type === 'pong' || meld.type === 'kong') && meld.tiles[0].type === 'dragon') {
+            faan += 1;
+            const dragonName = meld.tiles[0].value.charAt(0).toUpperCase() + meld.tiles[0].value.slice(1);
+            scoring.push({ name: `${dragonName} Dragon 番子`, value: 1 });
+        }
+    }
+
+    for (const meld of melds) {
+        if ((meld.type === 'pong' || meld.type === 'kong') && meld.tiles[0].type === 'wind') {
+            const windVal = meld.tiles[0].value;
+            if (windVal === player.seatWind) {
+                faan += 1;
+                scoring.push({ name: 'Seat Wind 門風', value: 1 });
+            }
+            if (windVal === WINDS[gameState.roundWind]) {
+                faan += 1;
+                scoring.push({ name: 'Round Wind 圈風', value: 1 });
+            }
+        }
+    }
+
+    const flushResult = checkFlush(player);
+    if (flushResult.full) {
+        faan += 7;
+        scoring.push({ name: 'Full Flush 清一色', value: 7 });
+    } else if (flushResult.half) {
+        faan += 3;
+        scoring.push({ name: 'Half Flush 混一色', value: 3 });
+    }
+
+    if (isAllHonors(player)) {
+        faan += 10;
+        scoring.push({ name: 'All Honors 字一色', value: 10 });
+    }
+
+    const kongCount = melds.filter(m => m.type === 'kong').length;
+    if (kongCount > 0) {
+        faan += kongCount;
+        scoring.push({ name: `Kong Bonus (${kongCount}) 槓`, value: kongCount });
+    }
+
+    if (faan === 0) {
+        faan = 1;
+        scoring.push({ name: 'Chicken Hand 雞糊', value: 1 });
+    }
+
+    return { faan, scoring };
+}
+
+function isAllPungs(player) {
+    const melds = player.melds;
+    for (const meld of melds) {
+        if (meld.type === 'chow') return false;
+    }
+
+    const hand = [...player.hand];
+    hand.sort(compareTiles);
+
+    let i = 0;
+    let pairFound = false;
+    while (i < hand.length) {
+        if (i + 2 < hand.length && tilesEqual(hand[i], hand[i+1]) && tilesEqual(hand[i+1], hand[i+2])) {
+            i += 3;
+        } else if (i + 1 < hand.length && tilesEqual(hand[i], hand[i+1])) {
+            if (pairFound) return false;
+            pairFound = true;
+            i += 2;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+function checkFlush(player) {
+    const allTiles = [...player.hand];
+    player.melds.forEach(m => allTiles.push(...m.tiles));
+
+    const suits = new Set();
+    let hasHonors = false;
+
+    for (const tile of allTiles) {
+        if (tile.type === 'suit') {
+            suits.add(tile.suit);
+        } else {
+            hasHonors = true;
+        }
+    }
+
+    if (suits.size === 1 && !hasHonors) {
+        return { full: true, half: false };
+    }
+    if (suits.size === 1 && hasHonors) {
+        return { full: false, half: true };
+    }
+    return { full: false, half: false };
+}
+
+function isAllHonors(player) {
+    const allTiles = [...player.hand];
+    player.melds.forEach(m => allTiles.push(...m.tiles));
+
+    return allTiles.every(t => t.type === 'wind' || t.type === 'dragon');
+}
+
+// ============ ROUND END ============
+function handleWin(winnerIdx, isSelfDraw) {
+    gameState.gamePhase = 'round_end';
+
+    const winner = gameState.players[winnerIdx];
+
+    if (!isSelfDraw && gameState.lastDiscard) {
+        winner.hand.push(gameState.lastDiscard);
+        winner.hand = sortHand(winner.hand);
+        gameState.discardPile.pop();
+    }
+
+    const { faan, scoring } = calculateScore(winner, isSelfDraw);
+
+    const payment = gameState.baseBet * Math.pow(2, Math.min(faan, 10));
+
+    const positions = ['South (You)', 'East', 'North', 'West'];
+    document.getElementById('winner-name').textContent = positions[winnerIdx] + ' Wins!';
+
+    const handDisplay = document.getElementById('winning-hand');
+    handDisplay.innerHTML = '';
+    winner.hand.forEach(tile => {
+        const tileEl = createTileElement(tile, 'small');
+        tileEl.classList.add('disabled');
+        handDisplay.appendChild(tileEl);
+    });
+    winner.melds.forEach(meld => {
+        meld.tiles.forEach(tile => {
+            const tileEl = createTileElement(tile, 'small');
+            tileEl.classList.add('disabled');
+            handDisplay.appendChild(tileEl);
+        });
+    });
+
+    const breakdownEl = document.getElementById('scoring-breakdown');
+    breakdownEl.innerHTML = scoring.map(s =>
+        `<div class="item"><span>${s.name}</span><span>${s.value} 番</span></div>`
+    ).join('') + `<div class="item total"><span>Total</span><span>${faan} 番 = $${payment.toLocaleString()}</span></div>`;
+
+    const changesEl = document.getElementById('money-changes');
+    changesEl.innerHTML = '';
+
+    if (isSelfDraw) {
+        for (let i = 0; i < 4; i++) {
+            if (i === winnerIdx) {
+                gameState.players[i].money += payment * 3;
+                changesEl.innerHTML += `<div class="money-change positive">${positions[i]}: +$${(payment * 3).toLocaleString()}</div>`;
+            } else {
+                gameState.players[i].money -= payment;
+                changesEl.innerHTML += `<div class="money-change negative">${positions[i]}: -$${payment.toLocaleString()}</div>`;
+            }
+        }
+    } else {
+        const discarder = gameState.lastDiscarder;
+        for (let i = 0; i < 4; i++) {
+            if (i === winnerIdx) {
+                gameState.players[i].money += payment * 3;
+                changesEl.innerHTML += `<div class="money-change positive">${positions[i]}: +$${(payment * 3).toLocaleString()}</div>`;
+            } else if (i === discarder) {
+                gameState.players[i].money -= payment * 3;
+                changesEl.innerHTML += `<div class="money-change negative">${positions[i]}: -$${(payment * 3).toLocaleString()} (discarder)</div>`;
+            }
+        }
+    }
+
+    document.getElementById('win-modal').classList.add('active');
+    updateMoneyDisplays();
+}
+
+function endRoundDraw() {
+    gameState.gamePhase = 'round_end';
+    document.getElementById('draw-modal').classList.add('active');
+}
+
+function nextRound() {
+    document.getElementById('win-modal').classList.remove('active');
+    document.getElementById('draw-modal').classList.remove('active');
+
+    const bankrupt = gameState.players.findIndex(p => p.money <= 0);
+    if (bankrupt !== -1) {
+        const positions = ['You', 'East', 'North', 'West'];
+        showToast(positions[bankrupt] + ' is bankrupt! Game over.');
+        setTimeout(() => {
+            document.getElementById('setup-screen').style.display = 'flex';
+            document.getElementById('game-screen').style.display = 'none';
+        }, 2000);
+        return;
+    }
+
+    gameState.dealer = (gameState.dealer + 1) % 4;
+    if (gameState.dealer === 0) {
+        gameState.handNumber++;
+        if (gameState.handNumber > 4) {
+            gameState.handNumber = 1;
+            gameState.roundWind = (gameState.roundWind + 1) % 4;
+        }
+    }
+
+    const seatWinds = ['south', 'west', 'north', 'east'];
+    for (let i = 0; i < 4; i++) {
+        gameState.players[i].seatWind = seatWinds[(4 - gameState.dealer + i) % 4];
+    }
+
+    startRound();
+}
+
+// ============ UTILITIES ============
+function disableAllButtons() {
+    document.getElementById('btn-discard').disabled = true;
+    document.getElementById('btn-chow').disabled = true;
+    document.getElementById('btn-pong').disabled = true;
+    document.getElementById('btn-kong').disabled = true;
+    document.getElementById('btn-win').disabled = true;
+    document.getElementById('btn-skip').disabled = true;
+}
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function showRules() {
+    document.getElementById('rules-modal').classList.add('active');
+}
+
+function closeRules() {
+    document.getElementById('rules-modal').classList.remove('active');
+}
+
+function confirmNewGame() {
+    if (confirm('Start a new game? Current progress will be lost.')) {
+        document.getElementById('setup-screen').style.display = 'flex';
+        document.getElementById('game-screen').style.display = 'none';
+    }
+}
+
+// Difficulty selection
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+    });
+});
+
+// Close modals on outside click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this && this.id === 'rules-modal') {
+            closeRules();
+        }
+    });
+});
+</script>
+</body>
+</html>
